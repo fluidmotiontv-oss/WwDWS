@@ -1,5 +1,5 @@
 import React from 'react';
-import { Video, Compass, Eye, Move3d, Sparkles, Music } from 'lucide-react';
+import { Video, Compass, Eye, Move3d, Sparkles, Music, Layers, Shuffle } from 'lucide-react';
 import { CameraViewMode } from '../visualizer/VisualizerScene';
 import { AudioMetrics } from '../../services/audioEngine';
 
@@ -8,13 +8,23 @@ interface ControlsHUDProps {
   onSelectCamera: (mode: CameraViewMode) => void;
   metrics: AudioMetrics | null;
   onOpenPlaylist: () => void;
+  onOpenRooms: () => void;
+  onRandomRoom: () => void;
+  activeRoomNumber: number;
+  isAutoMorph: boolean;
+  onToggleAutoMorph: () => void;
 }
 
 export const ControlsHUD: React.FC<ControlsHUDProps> = ({
   cameraMode,
   onSelectCamera,
   metrics,
-  onOpenPlaylist
+  onOpenPlaylist,
+  onOpenRooms,
+  onRandomRoom,
+  activeRoomNumber,
+  isAutoMorph,
+  onToggleAutoMorph
 }) => {
   const modes: Array<{ id: CameraViewMode; label: string; icon: React.ReactNode }> = [
     { id: 'chase', label: 'Chase Cam', icon: <Video className="w-3.5 h-3.5" /> },
@@ -26,12 +36,48 @@ export const ControlsHUD: React.FC<ControlsHUDProps> = ({
   return (
     <div className="fixed bottom-4 left-4 md:left-8 z-30 flex flex-col gap-2 max-w-[calc(100vw-2rem)] select-none">
       {/* Interactive Plasma Hint */}
-      <div className="glass-surface-subtle px-3 py-1.5 rounded-lg border border-white/10 text-[11px] text-slate-300 flex items-center gap-2 backdrop-blur-md">
-        <Sparkles className="w-3 h-3 text-cyan-400 animate-spin" />
-        <span>Interact on canvas to ripple ionized plasma waves</span>
+      <div className="glass-surface-subtle px-3 py-1.5 rounded-lg border border-white/10 text-[11px] text-slate-300 flex items-center justify-between gap-2 backdrop-blur-md">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3 h-3 text-cyan-400 animate-spin" />
+          <span>Interact on canvas to ripple ionized plasma waves</span>
+        </div>
+
+        {/* Quick auto-morph status indicator */}
+        <button
+          onClick={onToggleAutoMorph}
+          className={`text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors ${
+            isAutoMorph ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40' : 'text-slate-400 hover:text-white'
+          }`}
+          title="Toggle Auto-Morph between 10 rooms"
+        >
+          {isAutoMorph ? 'MORPH: ON' : 'MORPH: OFF'}
+        </button>
       </div>
 
       <div className="glass-surface rounded-xl p-2.5 flex flex-wrap items-center gap-2 border border-white/10 shadow-xl backdrop-blur-xl">
+        {/* Dimension Rooms Trigger */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onOpenRooms}
+            className="px-2.5 py-1.5 text-xs font-semibold rounded-md bg-gradient-to-r from-rose-500/20 to-purple-500/20 hover:from-rose-500/30 hover:to-purple-500/30 border border-rose-500/40 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title="Browse all 10 visual rooms"
+          >
+            <Layers className="w-3.5 h-3.5 text-rose-400" />
+            <span>Room {activeRoomNumber < 10 ? `0${activeRoomNumber}` : activeRoomNumber}</span>
+          </button>
+
+          <button
+            onClick={onRandomRoom}
+            className="p-1.5 rounded-md text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+            title="Jump to Random Room"
+            aria-label="Random Room"
+          >
+            <Shuffle className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 hidden sm:block" />
+
         {/* Camera Selector */}
         <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg">
           {modes.map((m) => (
@@ -83,7 +129,7 @@ export const ControlsHUD: React.FC<ControlsHUDProps> = ({
           </div>
         </div>
 
-        {/* Open live_MP3s Library shortcut */}
+        {/* Open mp3s Library shortcut */}
         <button
           onClick={onOpenPlaylist}
           className="px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ml-auto"
@@ -95,4 +141,3 @@ export const ControlsHUD: React.FC<ControlsHUDProps> = ({
     </div>
   );
 };
-

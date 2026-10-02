@@ -4,17 +4,20 @@ import { WestCoastAudioEngine, AudioMetrics } from '../../services/audioEngine';
 import { HorizonEngine } from './HorizonEngine';
 import { DragonFlock } from './DragonFlock';
 import { PlasmaSurface } from './PlasmaSurface';
+import { RoomTheme } from '../../data/roomsManifest';
 
 export type CameraViewMode = 'chase' | 'horizon' | 'dragon_pov' | 'orbit';
 
 interface VisualizerSceneProps {
   cameraMode: CameraViewMode;
+  activeRoom: RoomTheme;
   onFpsUpdate?: (fps: number) => void;
   onMetricsUpdate?: (metrics: AudioMetrics) => void;
 }
 
 export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
   cameraMode,
+  activeRoom,
   onFpsUpdate,
   onMetricsUpdate
 }) => {
@@ -29,6 +32,12 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
   const flockRef = useRef<DragonFlock | null>(null);
   const plasmaRef = useRef<PlasmaSurface | null>(null);
   const animFrameId = useRef<number | null>(null);
+
+  // Light references for smooth room morphing
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
+  const keyLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const rimLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const fillLightRef = useRef<THREE.DirectionalLight | null>(null);
 
   // Orbit camera drag state
   const isDragging = useRef(false);
@@ -72,6 +81,42 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
     isDragging.current = false;
   }, []);
 
+  // Update room theme when activeRoom changes
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    if (sceneRef.current.fog && sceneRef.current.fog instanceof THREE.FogExp2) {
+      sceneRef.current.fog.color.setHex(activeRoom.fogColor);
+      sceneRef.current.fog.density = activeRoom.fogDensity;
+    }
+    if (sceneRef.current.background instanceof THREE.Color) {
+      sceneRef.current.background.setHex(activeRoom.fogColor);
+    }
+
+    if (ambientLightRef.current) {
+      ambientLightRef.current.color.setHex(activeRoom.ambientColor);
+    }
+    if (keyLightRef.current) {
+      keyLightRef.current.color.setHex(activeRoom.keyLightColor);
+    }
+    if (rimLightRef.current) {
+      rimLightRef.current.color.setHex(activeRoom.rimLightColor);
+    }
+    if (fillLightRef.current) {
+      fillLightRef.current.color.setHex(activeRoom.fillLightColor);
+    }
+
+    if (horizonRef.current) {
+      horizonRef.current.applyRoomTheme(activeRoom);
+    }
+    if (flockRef.current) {
+      flockRef.current.applyRoomTheme(activeRoom);
+    }
+    if (plasmaRef.current) {
+      plasmaRef.current.applyRoomTheme(activeRoom);
+    }
+  }, [activeRoom]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -79,8 +124,8 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
 
     // 1. Scene & Depth Atmosphere
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x04040c);
-    scene.fog = new THREE.FogExp2(0x050412, 0.0019);
+    scene.background = new THREE.Color(activeRoom.fogColor);
+    scene.fog = new THREE.FogExp2(activeRoom.fogColor, activeRoom.fogDensity);
     sceneRef.current = scene;
 
     // 2. Camera Setup
@@ -110,33 +155,40 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
     }
 
     // 4. Studio Lighting Rig
-    const ambientLight = new THREE.AmbientLight(0x1a1236, 1.2);
+    const ambientLight = new THREE.AmbientLight(activeRoom.ambientColor, 1.2);
     scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
 
-    const sunsetKeyLight = new THREE.DirectionalLight(0xff7722, 2.8);
+    const sunsetKeyLight = new THREE.DirectionalLight(activeRoom.keyLightColor, 2.8);
     sunsetKeyLight.position.set(0, 90, -450);
     scene.add(sunsetKeyLight);
+    keyLightRef.current = sunsetKeyLight;
 
-    const cyanRimLight = new THREE.DirectionalLight(0x00f0ff, 2.2);
+    const cyanRimLight = new THREE.DirectionalLight(activeRoom.rimLightColor, 2.2);
     cyanRimLight.position.set(150, 100, 100);
     scene.add(cyanRimLight);
+    rimLightRef.current = cyanRimLight;
 
-    const violetFillLight = new THREE.DirectionalLight(0x8a2be2, 1.6);
+    const violetFillLight = new THREE.DirectionalLight(activeRoom.fillLightColor, 1.6);
     violetFillLight.position.set(-150, 60, -100);
     scene.add(violetFillLight);
+    fillLightRef.current = violetFillLight;
 
     // 5. Horizon Engine Visualizer
     const horizon = new HorizonEngine();
+    horizon.applyRoomTheme(activeRoom);
     scene.add(horizon.group);
     horizonRef.current = horizon;
 
     // 6. Cyber Dragon Flock
     const flock = new DragonFlock();
+    flock.applyRoomTheme(activeRoom);
     scene.add(flock.group);
     flockRef.current = flock;
 
     // 7. Interactive Plasma Surface
     const plasma = new PlasmaSurface();
+    plasma.applyRoomTheme(activeRoom);
     scene.add(plasma.mesh);
     plasmaRef.current = plasma;
     plasma.onResize(width, height);
@@ -215,7 +267,6 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
       let lookTarget = new THREE.Vector3();
 
       if (cameraMode === 'chase') {
-        // Smoothly pursue alpha dragon from behind and slightly above
         const chaseDistance = 65 + metrics.bass * 15;
         const chaseHeight = 22 + metrics.bass * 8;
         targetCamPos.copy(alphaPos)
@@ -223,11 +274,9 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
           .add(new THREE.Vector3(0, chaseHeight, 0));
         lookTarget.copy(alphaPos).add(new THREE.Vector3(0, 6, 0));
       } else if (cameraMode === 'dragon_pov') {
-        // Cockpit / Brow perspective flying with dragon
         targetCamPos.copy(alphaPos).add(new THREE.Vector3(0, 4, 0)).add(alphaHeading.clone().multiplyScalar(5));
         lookTarget.copy(alphaPos).add(alphaHeading.clone().multiplyScalar(120));
       } else if (cameraMode === 'orbit') {
-        // Interactive 360 orbit around the focal center
         const radius = 160;
         const x = Math.sin(orbitAngles.current.theta) * Math.cos(orbitAngles.current.phi) * radius;
         const y = 35 + Math.sin(orbitAngles.current.phi) * radius;
@@ -235,14 +284,12 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
         targetCamPos.set(x, y, z);
         lookTarget.set(0, 45, -200);
       } else {
-        // Horizon Panoramic View (Standard Vista overlooking the sunset grid)
         const swayX = Math.sin(elapsedTime * 0.15) * 35;
         const swayY = Math.cos(elapsedTime * 0.2) * 10;
         targetCamPos.set(swayX, 48 + swayY, 130);
         lookTarget.set(0, 55, -450);
       }
 
-      // Smooth camera damping / lerping
       const lerpSpeed = cameraMode === 'dragon_pov' ? 0.22 : 0.06;
       currentCamPos.lerp(targetCamPos, lerpSpeed);
       currentCamTarget.lerp(lookTarget, lerpSpeed);
@@ -250,11 +297,9 @@ export const VisualizerScene: React.FC<VisualizerSceneProps> = ({
       camera.position.copy(currentCamPos);
       camera.lookAt(currentCamTarget);
 
-      // Dynamic FOV widening on bass drops
       camera.fov = 58 + (metrics.bass * 6) + (metrics.beatStrength * 4);
       camera.updateProjectionMatrix();
 
-      // Render Scene
       renderer.render(scene, camera);
     };
 

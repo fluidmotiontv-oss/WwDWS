@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Maximize2, Minimize2, Radio, BookOpen, Activity } from 'lucide-react';
+import { Volume2, Maximize2, Minimize2, Radio, BookOpen, Activity, Layers } from 'lucide-react';
 import { AudioSourceType } from '../../services/audioEngine';
 
 interface TopNavigationProps {
@@ -8,6 +8,8 @@ interface TopNavigationProps {
   onOpenStorefront: () => void;
   onOpenTelemetry: () => void;
   onOpenPlaylist: () => void;
+  onOpenRooms: () => void;
+  activeRoomName: string;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   fps: number;
@@ -19,6 +21,8 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
   onOpenStorefront,
   onOpenTelemetry,
   onOpenPlaylist,
+  onOpenRooms,
+  activeRoomName,
   isFullscreen,
   onToggleFullscreen,
   fps
@@ -30,7 +34,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
         <a
           href="#home"
           onClick={(e) => { e.preventDefault(); }}
-          className="text-lg md:text-xl font-bold tracking-tight text-white font-display flex items-center gap-2 group"
+          className="text-lg md:text-xl font-bold tracking-tight text-white font-display flex items-center gap-2 group cursor-pointer"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
           <span className="bg-gradient-to-r from-rose-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
@@ -46,7 +50,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
       <nav className="hidden md:flex items-center gap-1 p-1 bg-white/5 rounded-xl border border-white/10">
         <button
           onClick={() => onSelectStation('generative')}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
             currentStation === 'generative'
               ? 'bg-gradient-to-r from-rose-500/80 to-purple-600/80 text-white shadow-sm'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
@@ -57,8 +61,17 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
         </button>
 
         <button
+          onClick={onOpenRooms}
+          className="px-3.5 py-1.5 text-xs font-medium rounded-lg text-rose-300 hover:text-white bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+          title="Switch between 10 3D Rooms"
+        >
+          <Layers className="w-3.5 h-3.5 text-rose-400" />
+          <span>Room: {activeRoomName}</span>
+        </button>
+
+        <button
           onClick={onOpenPlaylist}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
             currentStation === 'local_mp3'
               ? 'bg-gradient-to-r from-rose-500/80 to-purple-600/80 text-white shadow-sm'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
@@ -70,7 +83,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
 
         <button
           onClick={() => onSelectStation('microphone')}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
             currentStation === 'microphone'
               ? 'bg-gradient-to-r from-rose-500/80 to-purple-600/80 text-white shadow-sm'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
@@ -82,7 +95,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
 
         <button
           onClick={onOpenTelemetry}
-          className="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5"
+          className="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
         >
           <Activity className="w-3.5 h-3.5 text-cyan-400" />
           <span>Node Telemetry</span>
@@ -91,7 +104,6 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
 
       {/* Zone 3: 1-2 primary actions */}
       <div className="flex items-center gap-2.5">
-        {/* Real-time FPS metric */}
         <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 border border-white/5 text-[11px] font-mono text-slate-400 tabular-nums">
           <span className="text-emerald-400 font-semibold">{fps}</span>
           <span>FPS</span>

@@ -32,7 +32,9 @@ export class PlasmaSurface {
         uBass: { value: 0.0 },
         uMid: { value: 0.0 },
         uTreble: { value: 0.0 },
-        uBeat: { value: 0.0 }
+        uBeat: { value: 0.0 },
+        uColPlasma1: { value: new THREE.Vector3(0.98, 0.18, 0.58) },
+        uColPlasma2: { value: new THREE.Vector3(0.15, 0.95, 1.0) }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -55,6 +57,8 @@ export class PlasmaSurface {
         uniform float uMid;
         uniform float uTreble;
         uniform float uBeat;
+        uniform vec3 uColPlasma1;
+        uniform vec3 uColPlasma2;
 
         varying vec2 vUv;
         varying vec3 vWorldPos;
@@ -134,10 +138,10 @@ export class PlasmaSurface {
           // 3. Ionized Gas / West Coast Sunset Palette:
           // Violet -> Neon Magenta -> Radiant Amber -> Electric Cyan Core
           vec3 darkVoid   = vec3(0.02, 0.01, 0.05);
-          vec3 neonViolet = vec3(0.55, 0.08, 0.85); // #8c14d9
-          vec3 liquidPink = vec3(0.98, 0.18, 0.58); // #fa2e94
-          vec3 hotAmber   = vec3(1.0, 0.62, 0.12);  // #ff9e1f
-          vec3 ionizedCyan= vec3(0.15, 0.95, 1.0);  // #26f2ff
+          vec3 neonViolet = mix(vec3(0.55, 0.08, 0.85), uColPlasma1, 0.4);
+          vec3 liquidPink = uColPlasma1;
+          vec3 hotAmber   = mix(uColPlasma1, uColPlasma2, 0.5);
+          vec3 ionizedCyan= uColPlasma2;
 
           vec3 color = mix(darkVoid, neonViolet, smoothstep(0.15, 0.45, plasmaVal));
           color = mix(color, liquidPink, smoothstep(0.45, 0.72, plasmaVal));
@@ -171,6 +175,26 @@ export class PlasmaSurface {
     // Positioned in the mid-foreground to create dramatic spatial depth
     this.mesh.position.set(0, 48, -120);
     this.mesh.rotation.x = -0.08;
+  }
+
+  public applyRoomTheme(theme: { plasmaStyle: string }) {
+    if (theme.plasmaStyle === 'ionized_cyan') {
+      this.material.uniforms.uColPlasma1.value.set(0.0, 0.75, 0.95);
+      this.material.uniforms.uColPlasma2.value.set(0.4, 0.95, 1.0);
+    } else if (theme.plasmaStyle === 'emerald_mist') {
+      this.material.uniforms.uColPlasma1.value.set(0.05, 0.75, 0.5);
+      this.material.uniforms.uColPlasma2.value.set(0.3, 1.0, 0.7);
+    } else if (theme.plasmaStyle === 'golden_flare') {
+      this.material.uniforms.uColPlasma1.value.set(0.95, 0.35, 0.05);
+      this.material.uniforms.uColPlasma2.value.set(1.0, 0.85, 0.2);
+    } else if (theme.plasmaStyle === 'violet_matrix') {
+      this.material.uniforms.uColPlasma1.value.set(0.7, 0.15, 0.95);
+      this.material.uniforms.uColPlasma2.value.set(0.35, 0.55, 1.0);
+    } else {
+      // liquid_fire default
+      this.material.uniforms.uColPlasma1.value.set(0.98, 0.18, 0.58);
+      this.material.uniforms.uColPlasma2.value.set(0.15, 0.95, 1.0);
+    }
   }
 
   public setPointer(normalizedX: number, normalizedY: number, isActive = true) {

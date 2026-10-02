@@ -1,10 +1,10 @@
 /**
  * FluidmotionTV West Coast Radio
- * Immersive 3D Audio-Reactive Portal & Sovereign Storefront
+ * Immersive 3D Audio-Reactive Portal, 10 Dimension Rooms & Sovereign Storefront
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Sparkles, Radio, Shield, Volume2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Play, Radio, Layers, Sparkles } from 'lucide-react';
 import { WestCoastAudioEngine, AudioMetrics, AudioSourceType, RadioTrack } from './services/audioEngine';
 import { VisualizerScene, CameraViewMode } from './components/visualizer/VisualizerScene';
 import { TopNavigation } from './components/ui/TopNavigation';
@@ -13,13 +13,19 @@ import { ControlsHUD } from './components/ui/ControlsHUD';
 import { SovereignStorefrontModal } from './components/ui/SovereignStorefrontModal';
 import { TelemetryModal } from './components/ui/TelemetryModal';
 import { PlaylistModal } from './components/ui/PlaylistModal';
+import { RoomSwitcherModal } from './components/ui/RoomSwitcherModal';
 import { INITIAL_TELEMETRY_LOGS, LiveSalesTelemetryEvent } from './data/sovereignManifest';
+import { VISUAL_ROOMS, RoomTheme } from './data/roomsManifest';
 
 export default function App() {
   const audioEngine = WestCoastAudioEngine.getInstance();
 
   // Visualizer & Audio State
   const [cameraMode, setCameraMode] = useState<CameraViewMode>('chase');
+  const [activeRoom, setActiveRoom] = useState<RoomTheme>(VISUAL_ROOMS[0]);
+  const [isAutoMorph, setIsAutoMorph] = useState<boolean>(true);
+  const [autoMorphCountdown, setAutoMorphCountdown] = useState<number>(32);
+
   const [currentTrack, setCurrentTrack] = useState<RadioTrack>(audioEngine.currentTrack);
   const [isPlaying, setIsPlaying] = useState<boolean>(audioEngine.isPlaying);
   const [volume, setVolume] = useState<number>(audioEngine.currentVolume);
@@ -32,6 +38,7 @@ export default function App() {
   const [isStorefrontOpen, setIsStorefrontOpen] = useState<boolean>(false);
   const [isTelemetryOpen, setIsTelemetryOpen] = useState<boolean>(false);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState<boolean>(false);
+  const [isRoomsModalOpen, setIsRoomsModalOpen] = useState<boolean>(false);
 
   // Live Telemetry Event Logs (hooked to real-time sales monitor loop)
   const [telemetryLogs, setTelemetryLogs] = useState<LiveSalesTelemetryEvent[]>(INITIAL_TELEMETRY_LOGS);
@@ -47,10 +54,64 @@ export default function App() {
     return () => unsub();
   }, [audioEngine]);
 
+  // Auto-Morph between 10 visual rooms every ~32 seconds
+  const activeRoomRef = useRef(activeRoom);
+  activeRoomRef.current = activeRoom;
+
+  useEffect(() => {
+    if (!isAutoMorph) return;
+
+    const timer = setInterval(() => {
+      setAutoMorphCountdown((prev) => {
+        if (prev <= 1) {
+          // Time to morph! Select a new random room
+          const availableRooms = VISUAL_ROOMS.filter((r) => r.id !== activeRoomRef.current.id);
+          const nextRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)] || VISUAL_ROOMS[0];
+          setActiveRoom(nextRoom);
+          return 32;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isAutoMorph]);
+
+  // Keyboard shortcuts: 1-9 & 0 for rooms, 'R' for random, 'M' for auto-morph
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const key = e.key.toUpperCase();
+      if (key >= '1' && key <= '9') {
+        const index = parseInt(key) - 1;
+        if (VISUAL_ROOMS[index]) {
+          setActiveRoom(VISUAL_ROOMS[index]);
+          setAutoMorphCountdown(32);
+        }
+      } else if (key === '0') {
+        // Room 10
+        if (VISUAL_ROOMS[9]) {
+          setActiveRoom(VISUAL_ROOMS[9]);
+          setAutoMorphCountdown(32);
+        }
+      } else if (key === 'R') {
+        const availableRooms = VISUAL_ROOMS.filter((r) => r.id !== activeRoomRef.current.id);
+        const nextRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)] || VISUAL_ROOMS[0];
+        setActiveRoom(nextRoom);
+        setAutoMorphCountdown(32);
+      } else if (key === 'M') {
+        setIsAutoMorph((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Secure Background Telemetry & Sales Monitoring Loop
   useEffect(() => {
     const interval = setInterval(() => {
-      // Occasional simulated network acquisition token from sovereign edge nodes
       if (Math.random() > 0.45) {
         const nodeCities = ['Los Angeles Node #04', 'San Francisco Node #02', 'Seattle Node #09', 'Portland Node #03', 'San Diego Node #01'];
         const randomCity = nodeCities[Math.floor(Math.random() * nodeCities.length)];
@@ -76,7 +137,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Initial user gesture activation
   const handleStartAudio = useCallback(() => {
     setHasInteracted(true);
     audioEngine.startGenerative();
@@ -129,22 +189,37 @@ export default function App() {
     setTelemetryLogs((prev) => [tx, ...prev]);
   }, []);
 
+  const handleRandomRoom = useCallback(() => {
+    const availableRooms = VISUAL_ROOMS.filter((r) => r.id !== activeRoom.id);
+    const nextRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)] || VISUAL_ROOMS[0];
+    setActiveRoom(nextRoom);
+    setAutoMorphCountdown(32);
+  }, [activeRoom]);
+
+  const handleSelectRoom = useCallback((room: RoomTheme) => {
+    setActiveRoom(room);
+    setAutoMorphCountdown(32);
+  }, []);
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#04040a] text-slate-100 select-none">
-      {/* 1. Master 3D Visualizer Scene (Horizon Engine, Cyber Dragons, Plasma Surface) */}
+      {/* 1. Master 3D Visualizer Scene (Horizon Engine, Cyber Dragons, Plasma Surface, Active Room) */}
       <VisualizerScene
         cameraMode={cameraMode}
+        activeRoom={activeRoom}
         onFpsUpdate={setFps}
         onMetricsUpdate={setMetrics}
       />
 
-      {/* 2. Top Navigation (Brand, Station quick-links, Master Edition $9 CTA) */}
+      {/* 2. Top Navigation (Brand, Station quick-links, Active Room, Master Edition $9 CTA) */}
       <TopNavigation
         currentStation={currentTrack.sourceType}
         onSelectStation={handleSelectStation}
         onOpenStorefront={() => setIsStorefrontOpen(true)}
         onOpenTelemetry={() => setIsTelemetryOpen(true)}
         onOpenPlaylist={() => setIsPlaylistOpen(true)}
+        onOpenRooms={() => setIsRoomsModalOpen(true)}
+        activeRoomName={activeRoom.name}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
         fps={fps}
@@ -162,12 +237,17 @@ export default function App() {
         onVolumeChange={handleVolumeChange}
       />
 
-      {/* 4. Bottom HUD Controls (Camera Selector, Plasma hint, FFT band meters) */}
+      {/* 4. Bottom HUD Controls (Camera Selector, Room 01-10 Trigger, Plasma hint, FFT band meters) */}
       <ControlsHUD
         cameraMode={cameraMode}
         onSelectCamera={setCameraMode}
         metrics={metrics}
         onOpenPlaylist={() => setIsPlaylistOpen(true)}
+        onOpenRooms={() => setIsRoomsModalOpen(true)}
+        onRandomRoom={handleRandomRoom}
+        activeRoomNumber={activeRoom.number}
+        isAutoMorph={isAutoMorph}
+        onToggleAutoMorph={() => setIsAutoMorph((prev) => !prev)}
       />
 
       {/* 5. First-Interaction Prompt (browser audio autoplay policy compliance) */}
@@ -183,10 +263,10 @@ export default function App() {
                 FluidmotionTV
               </h2>
               <p className="text-sm font-semibold text-rose-400 mt-0.5">
-                West Coast Radio · Horizon Engine 3D
+                West Coast Radio · 10 Dimension Rooms
               </p>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Experience an audio-reactive 3D visualizer driven by real-time Web Audio API FFT analysis, cyber dragons, and interactive plasma ripples.
+                Experience an audio-reactive 3D visualizer driven by real-time Web Audio API FFT analysis, cyber dragons, and 10 auto-morphing dimensions.
               </p>
             </div>
 
@@ -198,32 +278,43 @@ export default function App() {
               <span>Tune In & Launch Visualizer</span>
             </button>
 
-            <div className="flex items-center justify-center gap-4 text-[11px] font-mono text-slate-400 pt-1">
+            <div className="flex items-center justify-center gap-3 text-[11px] font-mono text-slate-400 pt-1">
+              <span>10 Visual Realms</span>
+              <span>·</span>
+              <span>Auto-Morphing</span>
+              <span>·</span>
               <span>Web Audio API</span>
-              <span>·</span>
-              <span>Three.js WebGL</span>
-              <span>·</span>
-              <span>PayPal Ready</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 6. Sovereign Storefront Modal ($9 Master Edition & PayPal Checkout) */}
+      {/* 6. Dimension Portal (10 Visual Rooms & Auto-Morph Switcher) */}
+      <RoomSwitcherModal
+        isOpen={isRoomsModalOpen}
+        onClose={() => setIsRoomsModalOpen(false)}
+        activeRoom={activeRoom}
+        onSelectRoom={handleSelectRoom}
+        isAutoMorph={isAutoMorph}
+        onToggleAutoMorph={() => setIsAutoMorph((prev) => !prev)}
+        autoMorphCountdown={autoMorphCountdown}
+      />
+
+      {/* 7. Sovereign Storefront Modal ($9 Master Edition & PayPal Checkout) */}
       <SovereignStorefrontModal
         isOpen={isStorefrontOpen}
         onClose={() => setIsStorefrontOpen(false)}
         onOrderCompleted={handleOrderCompleted}
       />
 
-      {/* 7. Live Sales Telemetry & Sovereign Node Monitor */}
+      {/* 8. Live Sales Telemetry & Sovereign Node Monitor */}
       <TelemetryModal
         isOpen={isTelemetryOpen}
         onClose={() => setIsTelemetryOpen(false)}
         telemetryLogs={telemetryLogs}
       />
 
-      {/* 8. Local ./public/mp3s/ Playlist & MP3 Manager */}
+      {/* 9. Local ./public/mp3s/ Playlist & MP3 Manager */}
       <PlaylistModal
         isOpen={isPlaylistOpen}
         onClose={() => setIsPlaylistOpen(false)}

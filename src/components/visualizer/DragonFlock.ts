@@ -340,6 +340,15 @@ class ProceduralDragon {
       this.materials[m].emissiveIntensity = emissiveBoost;
     }
   }
+
+  public setColorScheme(primary: number, emissive: number) {
+    this.primaryColor.setHex(primary);
+    this.emissiveColor.setHex(emissive);
+    for (let m = 0; m < this.materials.length; m++) {
+      this.materials[m].color.setHex(primary);
+      this.materials[m].emissive.setHex(emissive);
+    }
+  }
 }
 
 export class DragonFlock {
@@ -372,6 +381,18 @@ export class DragonFlock {
     });
     this.dragons.push(gammaDragon);
     this.group.add(gammaDragon.group);
+  }
+
+  public applyRoomTheme(theme: { dragonColors: { alphaPrimary: number; alphaEmissive: number; betaPrimary: number; betaEmissive: number; gammaPrimary: number; gammaEmissive: number; } }) {
+    if (this.dragons[0]) {
+      this.dragons[0].setColorScheme(theme.dragonColors.alphaPrimary, theme.dragonColors.alphaEmissive);
+    }
+    if (this.dragons[1]) {
+      this.dragons[1].setColorScheme(theme.dragonColors.betaPrimary, theme.dragonColors.betaEmissive);
+    }
+    if (this.dragons[2]) {
+      this.dragons[2].setColorScheme(theme.dragonColors.gammaPrimary, theme.dragonColors.gammaEmissive);
+    }
   }
 
   public getAlphaPosition(): THREE.Vector3 {
