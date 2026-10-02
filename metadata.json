@@ -1,0 +1,6 @@
+{
+  "name": "FluidmotionTV West Coast Radio",
+  "description": "Immersive 3D audio-reactive West Coast Radio portal for FluidmotionTV, featuring the Horizon Engine visualizer, cyber dragons, interactive plasma shader, and sovereign digital storefront.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

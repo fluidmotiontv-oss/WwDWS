@@ -1,0 +1,37 @@
+{
+  "name": "FluidmotionTV West Coast Radio MP3 Library",
+  "description": "Local audio directory for FluidmotionTV. Place your MP3 audio files in this /public/live_MP3s/ folder to automatically stream them into the Three.js audio-reactive visualizer.",
+  "targetDirectory": "/public/live_MP3s/",
+  "tracks": [
+    {
+      "id": "pacific-glow-01",
+      "filename": "pacific_sunset_drift.mp3",
+      "title": "Pacific Sunset Drift",
+      "artist": "FluidmotionTV",
+      "bpm": 86,
+      "genre": "West Coast Synthwave",
+      "duration": 218,
+      "audioSourceType": "generative_fallback"
+    },
+    {
+      "id": "neon-tides-02",
+      "filename": "neon_ocean_highway.mp3",
+      "title": "Neon Ocean Highway",
+      "artist": "Fluidmotion Collective",
+      "bpm": 92,
+      "genre": "Chillwave / Lo-Fi",
+      "duration": 194,
+      "audioSourceType": "generative_fallback"
+    },
+    {
+      "id": "dragon-flight-03",
+      "filename": "luminescent_flight.mp3",
+      "title": "Luminescent Flight of the Dragon",
+      "artist": "FluidmotionTV x Kinetix",
+      "bpm": 110,
+      "genre": "Cybernetic Ambient",
+      "duration": 240,
+      "audioSourceType": "generative_fallback"
+    }
+  ]
+}
