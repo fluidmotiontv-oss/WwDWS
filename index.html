@@ -1,21 +1,248 @@
-<!doctype html>
-<html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>FluidmotionTV West Coast Radio</title>
-    <meta name="description" content="Immersive 3D audio-reactive West Coast Radio portal for FluidmotionTV, featuring the Horizon Engine visualizer, cyber dragons, interactive plasma shader, and sovereign digital storefront." />
-    <meta property="og:title" content="FluidmotionTV West Coast Radio" />
-    <meta property="og:description" content="Immersive 3D audio-reactive West Coast Radio portal for FluidmotionTV, featuring the Horizon Engine visualizer, cyber dragons, interactive plasma shader, and sovereign digital storefront." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-[#04040a] text-slate-100 overflow-hidden select-none antialiased">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluidmotionTV Radio - WebGL Visualizer</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #050508;
+            font-family: monospace;
+            color: #00ffcc;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #ui-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(5, 5, 8, 0.85);
+            padding: 15px 30px;
+            border: 1px solid #00ffcc;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn {
+            border: 1px solid #00ffcc;
+            background: transparent;
+            color: #00ffcc;
+            display: inline-block;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-family: monospace;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #00ffcc;
+            color: #050508;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        #track-info {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            letter-spacing: 0.5px;
+        }
+        .links-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
 
+    <div id="canvas-container"></div>
+
+    <div id="ui-overlay">
+        <div id="track-info">Ready to initialize stream</div>
+        <div class="links-row">
+            <button id="toggle-stream" class="btn">Play Radio</button>
+            <button id="next-track" class="btn">Next Track</button>
+            <a href="YOUR_EBOOK_LINK_HERE" target="_blank" class="btn">Get Ebook</a>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // Add your local audio filenames here
+        const playlist = [
+            "track1.mp3",
+            "track2.mp3",
+            "track3.mp3"
+        ];
+        let currentTrackIndex = 0;
+
+        let scene, camera, renderer, geometry, material, mesh, analyser, audio, audioContext, source;
+        const container = document.getElementById('canvas-container');
+        const trackInfo = document.getElementById('track-info');
+        const toggleBtn = document.getElementById('toggle-stream');
+        const nextBtn = document.getElementById('next-track');
+
+        function init() {
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050508, 0.035);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 7;
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Geometry & Material
+            geometry = new THREE.TorusKnotGeometry(2, 0.6, 128, 32);
+            material = new THREE.MeshStandardMaterial({
+                color: 0x00ffcc,
+                wireframe: true,
+                emissive: 0x004444,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const pointLight = new THREE.PointLight(0xff00ff, 2, 50);
+            pointLight.position.set(5, 5, 5);
+            scene.add(pointLight);
+
+            const pointLight2 = new THREE.PointLight(0x00ffff, 2, 50);
+            pointLight2.position.set(-5, -5, 5);
+            scene.add(pointLight2);
+
+            window.addEventListener('resize', onWindowResize);
+            setupAudioControls();
+        }
+
+        function loadTrack(index) {
+            if (playlist.length === 0) return;
+            
+            if (audio) {
+                audio.pause();
+            }
+
+            const trackPath = playlist[index];
+            audio = new Audio(trackPath);
+            audio.crossOrigin = "anonymous";
+
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (source) {
+                source.disconnect();
+            }
+
+            source = audioContext.createMediaElementSource(audio);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            audio.play().then(() => {
+                toggleBtn.textContent = "Pause";
+                trackInfo.textContent = `Now Playing: ${trackPath}`;
+            }).catch(e => {
+                console.log("Playback error:", e);
+                trackInfo.textContent = `Error playing: ${trackPath}`;
+            });
+
+            audio.onended = () => {
+                currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+                loadTrack(currentTrackIndex);
+            };
+        }
+
+        function setupAudioControls() {
+            toggleBtn.addEventListener('click', () => {
+                if (!audioContext) {
+                    loadTrack(currentTrackIndex);
+                    return;
+                }
+
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                if (audio.paused) {
+                    audio.play();
+                    toggleBtn.textContent = "Pause";
+                    trackInfo.textContent = `Now Playing: ${playlist[currentTrackIndex]}`;
+                } else {
+                    audio.pause();
+                    toggleBtn.textContent = "Play Radio";
+                    trackInfo.textContent = "Stream Paused";
+                }
+            });
+
+            nextBtn.addEventListener('click', () => {
+                currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+                loadTrack(currentTrackIndex);
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            mesh.rotation.x += 0.003;
+            mesh.rotation.y += 0.005;
+
+            if (analyser) {
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(dataArray);
+
+                let sum = 0;
+                for(let i = 0; i < 10; i++) {
+                    sum += dataArray[i];
+                }
+                let bass = sum / 10;
+
+                let scale = 1 + (bass / 255) * 0.4;
+                mesh.scale.set(scale, scale, scale);
+
+                let colorVal = (bass / 255);
+                material.emissive.setRGB(0, colorVal * 0.8, colorVal);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
